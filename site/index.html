@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Compare AI-generated black hole simulations made from one prompt, each in a single HTML file.">
+  <title>Black Hole Bench</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="gallery.js" defer></script>
+</head>
+<body>
+  <header><a class="brand" href="./">BLACK HOLE BENCH</a><a href="https://github.com/first-uninteresting-username/black-hole-bench">GitHub ↗</a></header>
+  <main>
+    <section class="intro">
+      <p class="eyebrow">ONE PROMPT · MANY MODELS</p>
+      <h1>A window into<br>model imagination.</h1>
+      <p class="description">Black holes, gravitational lensing, and accretion discs. Compare how AI models turn the same request into a single HTML simulation.</p>
+    </section>
+    <section class="prompt" aria-labelledby="prompt-title">
+      <div class="section-heading"><h2 id="prompt-title">The benchmark prompt</h2><a href="PROMPT.txt">Plain text ↗</a></div>
+      <blockquote>make a realistic interstellar stype blackhole sim with gravity lensing, and acretion disc, using html, css, and js, it should rrender properly too, give it to me as a single html file</blockquote>
+      <p class="muted">Original wording, preserved exactly.</p>
+    </section>
+    <section aria-labelledby="submissions-title">
+      <div class="section-heading"><h2 id="submissions-title">Model outputs <span id="count"></span></h2><a href="https://github.com/first-uninteresting-username/black-hole-bench#add-a-models-output">Add a submission ↗</a></div>
+      <div id="gallery" class="gallery" aria-live="polite"><p class="muted">Loading submissions…</p></div>
+    </section>
+  </main>
+  <footer>One HTML file per run. Same prompt for every model.</footer>
+</body>
+</html>

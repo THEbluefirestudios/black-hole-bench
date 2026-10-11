@@ -1,0 +1,1 @@
+make a realistic interstellar stype blackhole sim with gravity lensing, and acretion disc, using html, css, and js, it should rrender properly too, give it to me as a single html file
