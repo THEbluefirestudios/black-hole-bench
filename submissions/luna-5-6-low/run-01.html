@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Interstellar // Black Hole Observatory</title>
+  <style>
+    :root{--cyan:#8de5ff;--gold:#ffc568;--ink:#060812;--glass:rgba(11,16,29,.68);--line:rgba(164,206,255,.18);}
+    *{box-sizing:border-box} html,body{margin:0;min-height:100%;background:var(--ink);color:#eef5ff;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}body{overflow-x:hidden}
+    canvas{position:fixed;inset:0;width:100%;height:100%;display:block;background:#050711;cursor:grab}canvas:active{cursor:grabbing}
+    .veil{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 50%,transparent 38%,rgba(2,4,10,.45) 100%),linear-gradient(110deg,rgba(2,4,12,.4),transparent 45%,rgba(4,7,14,.45))}
+    .ui{position:relative;min-height:100vh;padding:28px 34px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
+    header,.bottom{display:flex;justify-content:space-between;align-items:flex-start;gap:22px}.brand{letter-spacing:.22em;font-size:11px;color:#91a5c0;text-transform:uppercase}.brand strong{display:block;font-size:18px;letter-spacing:.12em;color:#f6fbff;margin-bottom:7px;font-weight:500}.brand em{font-style:normal;color:var(--gold)}
+    .status{display:flex;gap:8px;align-items:center;font:10px ui-monospace,SFMono-Regular,monospace;letter-spacing:.13em;color:#8fa9b5;text-transform:uppercase}.dot{width:7px;height:7px;border-radius:50%;background:#63e0ad;box-shadow:0 0 14px #63e0ad}
+    .panel{pointer-events:auto;background:linear-gradient(145deg,rgba(18,25,43,.72),rgba(7,11,23,.52));border:1px solid var(--line);box-shadow:0 20px 70px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.04);backdrop-filter:blur(18px);border-radius:16px}
+    .readout{width:min(310px,calc(100vw - 68px));padding:18px 19px}.eyebrow{font:10px ui-monospace,SFMono-Regular,monospace;letter-spacing:.16em;color:#7891af;text-transform:uppercase}.readout h1{font:500 28px/1.1 Georgia,serif;letter-spacing:-.03em;margin:9px 0 6px}.readout p{color:#9cacc2;font:12px/1.55 ui-monospace,SFMono-Regular,monospace;margin:0 0 16px}.rule{height:1px;background:var(--line);margin:13px 0}.metric{display:flex;justify-content:space-between;gap:18px;font:11px ui-monospace,SFMono-Regular,monospace;color:#8295ad;padding:5px 0}.metric b{color:#e7eef9;font-weight:400}.metric b.gold{color:var(--gold)}
+    .bottom{align-items:flex-end}.controls{padding:14px 16px;display:flex;align-items:center;gap:17px;width:min(460px,calc(100vw - 68px))}.controls label{display:flex;align-items:center;gap:9px;flex:1;font:10px ui-monospace,SFMono-Regular,monospace;letter-spacing:.08em;color:#8193ab;text-transform:uppercase}.controls input{accent-color:var(--gold);width:100%;cursor:pointer}.btn{border:1px solid rgba(152,217,255,.28);background:rgba(114,170,210,.08);color:#d7ecff;border-radius:8px;padding:9px 12px;font:10px ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:.2s}.btn:hover{background:rgba(141,229,255,.16);border-color:var(--cyan)}
+    .legend{display:flex;align-items:center;gap:13px;font:10px ui-monospace,monospace;letter-spacing:.08em;color:#8193ab;text-transform:uppercase}.legend span{display:inline-flex;align-items:center;gap:6px}.swatch{width:20px;height:3px;border-radius:4px;background:linear-gradient(90deg,#fdf8d1,#e98242)}.swatch.blue{background:linear-gradient(90deg,#c3fbff,#4382ff)}
+    @media(max-width:650px){.ui{padding:20px}.bottom{align-items:stretch;flex-direction:column}.controls{width:100%}.legend{justify-content:flex-end}.readout{width:min(280px,calc(100vw - 40px))}.brand strong{font-size:15px}}
+  </style>
+</head>
+<body>
+  <canvas id="space"></canvas><div class="veil"></div>
+  <main class="ui">
+    <header><div class="brand"><strong>Event Horizon <em>//</em> Observatory</strong>GRAVITATIONAL LENSING ARRAY · 04:17:22 UTC</div><div class="status"><span class="dot"></span>LIVE SIMULATION</div></header>
+    <section class="panel readout"><div class="eyebrow">Target / BH-01 Sagittarius</div><h1>Singularity</h1><p>Light bends. Time slows. Matter falls.</p><div class="rule"></div><div class="metric"><span>MASS</span><b>6.5 × 10⁹ M☉</b></div><div class="metric"><span>SCHWARZSCHILD RADIUS</span><b>19.2 AU</b></div><div class="metric"><span>ACCRETION TEMP.</span><b class="gold" id="temp">2.4 × 10⁶ K</b></div><div class="metric"><span>LENSING STRENGTH</span><b id="lens">98.7%</b></div></section>
+    <footer class="bottom"><div class="panel controls"><label>Time dilation <input id="speed" type="range" min="0" max="2" step=".01" value=".72"></label><button class="btn" id="pause">Pause</button><button class="btn" id="reset">Reset</button></div><div class="legend"><span><i class="swatch"></i>Accretion disk</span><span><i class="swatch blue"></i>Lensed light</span></div></footer>
+  </main>
+  <script>
+    const canvas=document.getElementById('space'),ctx=canvas.getContext('2d'),speed=document.getElementById('speed'),pause=document.getElementById('pause'),reset=document.getElementById('reset');
+    let dpr=1,w=0,h=0,t=0,running=true,drag={x:0,y:0,active:false},offset={x:0,y:0};
+    const stars=Array.from({length:260},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.3+.15,a:Math.random()*.7+.2,p:Math.random()*6.28,c:Math.random()<.18?'#9fd6ff':'#f4f1df'}));
+    const dust=Array.from({length:1550},()=>{let a=Math.random()*Math.PI*2,rad=Math.pow(Math.random(),.57);return{a,rad,z:(Math.random()-.5)*.12,s:Math.random()*.8+.2};});
+    function resize(){dpr=Math.min(devicePixelRatio||1,2);w=innerWidth;h=innerHeight;canvas.width=w*dpr;canvas.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}
+    function glow(x,y,r,color,alpha=1){let g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,color);g.addColorStop(1,'transparent');ctx.globalAlpha=alpha;ctx.fillStyle=g;ctx.fillRect(x-r,y-r,x+r,y+r);ctx.globalAlpha=1}
+    function draw(){ctx.clearRect(0,0,w,h);let cx=w*.53+offset.x,cy=h*.51+offset.y,scale=Math.min(w,h)/830;ctx.fillStyle='#050711';ctx.fillRect(0,0,w,h);
+      stars.forEach(s=>{let x=s.x*w,y=s.y*h;ctx.globalAlpha=s.a*(.7+.3*Math.sin(t*.4+s.p));ctx.fillStyle=s.c;ctx.beginPath();ctx.arc(x,y,s.r,0,7);ctx.fill()});ctx.globalAlpha=1;
+      glow(cx,cy,370*scale,'#1a376e',.1);glow(cx,cy,255*scale,'#f07631',.09);glow(cx,cy,112*scale,'#f8a43b',.18);
+      ctx.save();ctx.translate(cx,cy);ctx.scale(1,.37);ctx.rotate(-.11);
+      dust.forEach((q,i)=>{let rr=(38+q.rad*285)*scale, a=q.a+t*(.1+.34*(1-q.rad))*+Number(speed.value);let x=Math.cos(a)*rr,y=Math.sin(a)*rr;let hue=20+q.rad*33+Math.sin(a)*10;ctx.globalAlpha=(.08+.7*(1-q.rad))*(.55+q.s*.45);ctx.fillStyle=`hsl(${hue},${78+q.s*20}%,${58+q.s*28}%)`;ctx.beginPath();ctx.arc(x,y,(.35+q.s*1.5)*scale,0,7);ctx.fill()});
+      let ring=ctx.createRadialGradient(0,0,30*scale,0,0,225*scale);ring.addColorStop(0,'rgba(255,245,200,0)');ring.addColorStop(.55,'rgba(255,140,50,.16)');ring.addColorStop(.8,'rgba(255,217,121,.62)');ring.addColorStop(1,'rgba(255,101,29,0)');ctx.globalAlpha=1;ctx.fillStyle=ring;ctx.beginPath();ctx.arc(0,0,230*scale,0,7);ctx.fill();ctx.restore();
+      ctx.save();ctx.translate(cx,cy);ctx.scale(1,.37);ctx.shadowBlur=25*scale;ctx.shadowColor='#fff2be';ctx.strokeStyle='rgba(255,244,201,.8)';ctx.lineWidth=5*scale;ctx.beginPath();ctx.arc(0,0,82*scale,0,7);ctx.stroke();ctx.restore();
+      ctx.shadowBlur=0;ctx.fillStyle='#000';ctx.beginPath();ctx.arc(cx,cy,54*scale,0,7);ctx.fill();glow(cx,cy,48*scale,'#000',1);
+      // warped background arcs suggest gravitational lensing
+      ctx.strokeStyle='rgba(134,204,255,.18)';ctx.lineWidth=1;[1.18,1.34,1.58].forEach((k,i)=>{ctx.beginPath();ctx.ellipse(cx,cy,112*scale*k,76*scale*k,0,0,7);ctx.stroke()});
+      if(running){t+=.012;requestAnimationFrame(draw)}
+    }
+    speed.addEventListener('input',()=>{document.getElementById('lens').textContent=(96+Number(speed.value)*1.8).toFixed(1)+'%';document.getElementById('temp').textContent=(1.8+Number(speed.value)*.85).toFixed(1)+' × 10⁶ K'});
+    pause.onclick=()=>{running=!running;pause.textContent=running?'Pause':'Resume';if(running)requestAnimationFrame(draw)};reset.onclick=()=>{t=0;offset={x:0,y:0};if(!running){running=true;pause.textContent='Pause';requestAnimationFrame(draw)}};
+    canvas.onpointerdown=e=>{drag={x:e.clientX,y:e.clientY,active:true};canvas.setPointerCapture(e.pointerId)};canvas.onpointermove=e=>{if(drag.active){offset.x+=(e.clientX-drag.x);offset.y+=(e.clientY-drag.y);drag.x=e.clientX;drag.y=e.clientY}};canvas.onpointerup=()=>drag.active=false;addEventListener('resize',resize);resize();draw();
+  </script>
+</body></html>
