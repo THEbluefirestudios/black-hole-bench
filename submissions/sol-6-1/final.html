@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#060709">
+<meta name="description" content="An interactive, self-contained black hole observatory with Schwarzschild light-path tracing and a turbulent accretion disc.">
+<title>Gargantua — Black Hole Observatory</title>
+<style>
+:root{color-scheme:dark;--ink:#eeeae0;--muted:#898a8c;--gold:#d5b580;--line:rgba(226,220,203,.14);--panel:rgba(14,16,19,.86)}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050609;color:var(--ink);font-family:Arial,Helvetica,sans-serif}button,input,select{font:inherit}button{color:inherit;cursor:pointer}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:5px}button{touch-action:manipulation}#universe,#fallback{position:fixed;inset:0;width:100%;height:100%;display:block}#universe{touch-action:none;cursor:grab}#universe.dragging{cursor:grabbing}#fallback{display:none}
+.vignette{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 150px 50px rgba(0,0,0,.25)}.chrome{transition:opacity .3s,transform .3s}body.clean .chrome{opacity:0;pointer-events:none}body.clean .dock{transform:translateY(20px)}.masthead{position:fixed;top:34px;left:38px;right:38px;display:flex;align-items:flex-start;justify-content:space-between;pointer-events:none}.branding{pointer-events:auto}.eyebrow{font-size:10px;letter-spacing:3px;font-weight:600;color:var(--gold);text-transform:uppercase;display:flex;align-items:center;gap:10px}.orbit-mark{width:19px;height:19px;border:1px solid var(--gold);border-radius:50%;position:relative;display:inline-block}.orbit-mark:after{content:"";position:absolute;inset:6px -5px;border:1px solid var(--gold);border-radius:50%;transform:rotate(-25deg)}h1{font:normal 46px/1.05 Georgia,'Times New Roman',serif;letter-spacing:-1.5px;margin:17px 0 9px}.subtitle{font-size:12px;color:var(--muted);letter-spacing:.35px;margin:0}.top-right{display:flex;gap:18px;align-items:center;pointer-events:auto}.live{font-size:9px;letter-spacing:1.8px;color:#c2c3c5;display:flex;gap:8px;align-items:center}.live-dot{width:5px;height:5px;border-radius:50%;background:var(--gold);box-shadow:0 0 9px #d5b58066}.live-dot.paused{background:#686a70;box-shadow:none}.icon-button{display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--line);background:rgba(10,12,15,.45);border-radius:50%;transition:background .2s,border-color .2s}.icon-button:hover{background:#222326;border-color:#928575}.icon-button svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}.top-actions{display:flex;gap:8px}
+.view-label{position:fixed;left:40px;bottom:220px;pointer-events:none}.view-label .rule{width:30px;height:1px;background:var(--gold);margin-bottom:12px}.view-label p{font-size:9px;letter-spacing:2px;margin:0 0 8px;color:var(--muted)}.view-label strong{font-size:11px;letter-spacing:.8px;font-weight:400;color:#d3cfc7}.drag-hint{position:fixed;bottom:222px;right:40px;font-size:10px;letter-spacing:.7px;color:#73757a;pointer-events:none}.dock{position:fixed;bottom:30px;left:38px;right:38px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(110deg,rgba(22,23,27,.9),rgba(12,14,18,.86));backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 14px 50px #0007;padding:23px 27px 16px}.dock-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}.dock-title{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#bcb9b0;display:flex;align-items:center;gap:10px}.small-square{width:5px;height:5px;background:var(--gold)}.transport{display:flex;align-items:center;gap:14px}.text-button{border:0;background:none;padding:4px;color:#a4a2a0;font-size:10px;letter-spacing:.5px;display:flex;align-items:center;gap:7px}.text-button:hover{color:var(--ink)}.text-button svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.5}.controls{display:grid;grid-template-columns:1fr 1fr 1fr 1.15fr;gap:29px}.control{min-width:0}.control-heading{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;color:#aaa8a3;margin-bottom:12px}.control output{color:var(--ink);font-family:'Courier New',monospace;font-size:11px}.range-hints{font-size:8px;letter-spacing:.9px;color:#60636a;display:flex;justify-content:space-between;margin-top:9px;text-transform:uppercase}input[type=range]{-webkit-appearance:none;appearance:none;height:2px;background:linear-gradient(to right,var(--gold) 0%,var(--gold) var(--progress,50%),#36373c var(--progress,50%),#36373c 100%);width:100%;margin:6px 0;cursor:pointer;display:block}input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:9px;height:9px;border-radius:50%;background:#e3ceb0;box-shadow:0 0 0 3px #d5b58013}input[type=range]::-moz-range-thumb{width:9px;height:9px;border:0;border-radius:50%;background:#e3ceb0}.effects{border-left:1px solid var(--line);padding-left:28px;display:flex;flex-direction:column;justify-content:space-between;gap:14px}.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:15px}.toggle-row span{font-size:11px;color:#aaa8a3}.switch{border:0;width:27px;height:15px;border-radius:12px;background:#373940;padding:3px;position:relative;transition:background .2s}.switch:after{content:"";display:block;width:9px;height:9px;background:#83858a;border-radius:50%;transition:transform .2s}.switch[aria-checked=true]{background:#82704f}.switch[aria-checked=true]:after{background:#f1e0c5;transform:translateX(12px)}.dock-bottom{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);margin-top:20px;padding-top:13px;gap:12px}.status{display:flex;gap:16px;align-items:center;font:9px 'Courier New',monospace;color:#73767c;letter-spacing:.5px}.status span+span:before{content:"/";margin-right:16px;color:#45474d}.quality-control{display:flex;gap:8px;align-items:center;color:#73767c;font-size:9px;letter-spacing:.8px}.quality-control select{font-size:10px;background:transparent;border:0;color:#bcb9b0;cursor:pointer;padding:2px 0;max-width:160px}.quality-control option{background:#15171c}.loading{position:fixed;left:50%;top:48%;transform:translate(-50%,-50%);text-align:center;transition:opacity .5s;pointer-events:none}.loading-ring{width:38px;height:38px;border:1px solid #ffffff15;border-top-color:var(--gold);border-radius:50%;animation:rotate 1s linear infinite;margin:0 auto 20px}.loading p{font-size:10px;letter-spacing:2px;color:#b1a18a}@keyframes rotate{to{transform:rotate(360deg)}}.toast{position:fixed;top:26px;left:50%;transform:translate(-50%,-20px);opacity:0;padding:10px 18px;border:1px solid var(--line);border-radius:8px;background:#17191f;color:#c7c5bd;font-size:11px;z-index:20;transition:.2s;pointer-events:none}.toast.show{opacity:1;transform:translate(-50%,0)}.reveal{position:fixed;right:25px;bottom:22px;opacity:0;pointer-events:none;transition:.3s;z-index:5}body.clean .reveal{opacity:.6;pointer-events:auto}body.clean .reveal:hover{opacity:1}
+dialog{max-width:480px;width:calc(100% - 40px);border:1px solid #43403a;background:#111318;color:#c3c2bd;border-radius:14px;padding:32px;box-shadow:0 24px 150px #000}dialog::backdrop{background:#000b;backdrop-filter:blur(8px)}dialog h2{font:normal 31px Georgia,serif;color:var(--ink);margin:13px 0 18px}dialog p{font-size:12px;line-height:1.9;margin:0 0 14px}dialog a{color:var(--gold)}.dialog-close{position:absolute;right:18px;top:18px}.keys{display:grid;grid-template-columns:1fr 1fr;gap:11px;font-size:11px;margin-top:22px;border-top:1px solid var(--line);padding-top:22px}.keys span{color:#898b91}.keys kbd{color:#d5b580;font:10px 'Courier New',monospace;margin-right:8px}.model-note{color:#777a81;font-size:10px!important;margin-top:21px!important;margin-bottom:0!important}
+@media(max-width:760px){.masthead{top:24px;left:22px;right:22px}h1{font-size:35px;margin-top:12px}.eyebrow{font-size:8px;letter-spacing:2px}.subtitle{font-size:10px}.live{display:none}.top-actions{gap:6px}.icon-button{width:30px;height:30px}.dock{left:18px;right:18px;bottom:18px;padding:19px 20px 13px}.controls{grid-template-columns:1fr 1fr;gap:22px}.effects{padding-left:0;border:0;justify-content:center;gap:17px}.dock-top{margin-bottom:21px}.dock-bottom{margin-top:17px}.status{gap:9px;font-size:8px}.status span+span:before{margin-right:9px}.status #resolution{display:none}.quality-control label{display:none}.quality-control select{max-width:108px;font-size:9px}.view-label{left:23px;bottom:319px}.drag-hint{right:23px;bottom:318px;font-size:8px;max-width:150px;text-align:right}.transport{gap:10px}.dock-title{font-size:9px}.text-button{font-size:9px}#time-readout{display:none}.toast{top:145px;white-space:nowrap}}@media(max-height:590px) and (min-width:761px){.masthead{top:20px}h1{font-size:34px;margin-top:10px}.dock{bottom:16px;padding:15px 22px 12px}.dock-top{margin-bottom:13px}.dock-bottom{margin-top:13px}.view-label,.drag-hint{bottom:190px}}
+</style>
+</head>
+<body>
+<canvas id="universe" aria-label="Interactive black hole with a gravitationally lensed accretion disc"></canvas>
+<canvas id="fallback" aria-label="Software ray-traced black hole with a gravitationally lensed accretion disc" style="touch-action:none;cursor:grab"></canvas>
+<div class="vignette"></div>
+<header class="masthead chrome">
+ <div class="branding"><div class="eyebrow"><span class="orbit-mark" aria-hidden="true"></span>Relativistic observatory</div><h1>Gargantua</h1><p class="subtitle">A study in curved spacetime.</p></div>
+ <div class="top-right"><div class="live"><span class="live-dot" id="live-dot"></span><span id="live-label">LIVE SIMULATION</span></div><div class="top-actions">
+ <button class="icon-button" id="about" aria-label="About the simulation" title="About the simulation"><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"/><path d="M10 9v5m0-8v.1"/></svg></button>
+ <button class="icon-button" id="capture" aria-label="Save an image" title="Save image"><svg viewBox="0 0 20 20"><path d="M3 6h3l1-2h6l1 2h3v10H3z"/><circle cx="10" cy="11" r="3"/></svg></button>
+ <button class="icon-button" id="fullscreen" aria-label="Enter fullscreen" title="Fullscreen · F"><svg viewBox="0 0 20 20"><path d="M3 7V3h4m6 0h4v4M3 13v4h4m6 0h4v-4"/></svg></button>
+ </div></div>
+</header>
+<div class="view-label chrome"><div class="rule"></div><p>01 / SCHWARZSCHILD</p><strong>Beyond the point of return.</strong></div>
+<div class="drag-hint chrome">Drag to orbit &nbsp;·&nbsp; Scroll to approach</div>
+<section class="dock chrome" aria-label="Simulation controls">
+ <div class="dock-top"><div class="dock-title"><span class="small-square"></span>Observer controls</div><div class="transport">
+ <button class="text-button" id="pause" aria-label="Pause simulation"><svg id="pause-icon" viewBox="0 0 16 16"><path d="M5 3v10M11 3v10"/></svg><span id="pause-label">Pause</span></button>
+ <button class="text-button" id="reset" title="Reset view · R"><svg viewBox="0 0 16 16"><path d="M3 6a5 5 0 1 1 0 4M3 2v4h4"/></svg>Reset</button>
+ <button class="text-button" id="hide" title="Hide controls · H"><svg viewBox="0 0 16 16"><path d="M1 8s2.5-4 7-4 7 4 7 4-2.5 4-7 4-7-4-7-4z"/><circle cx="8" cy="8" r="1.5"/></svg>Hide</button>
+ </div></div>
+ <div class="controls">
+ <div class="control"><div class="control-heading"><label for="inclination">Viewing angle</label><output id="inclination-value" for="inclination">8°</output></div><input id="inclination" type="range" min="2" max="80" value="8" step="0.5"><div class="range-hints"><span>Edge-on</span><span>Overhead</span></div></div>
+ <div class="control"><div class="control-heading"><label for="distance">Observer distance</label><output id="distance-value" for="distance">44 GM/c²</output></div><input id="distance" type="range" min="28" max="75" value="44" step="0.5"><div class="range-hints"><span>Near</span><span>Far</span></div></div>
+ <div class="control"><div class="control-heading"><label for="exposure">Disc exposure</label><output id="exposure-value" for="exposure">1.00×</output></div><input id="exposure" type="range" min="0.35" max="2.5" value="1" step="0.01"><div class="range-hints"><span>Subtle</span><span>Luminous</span></div></div>
+ <div class="effects"><div class="toggle-row"><span id="lensing-label">Gravitational lensing</span><button class="switch" id="lensing" role="switch" aria-checked="true" aria-labelledby="lensing-label"></button></div><div class="toggle-row"><span id="doppler-label">Doppler beaming</span><button class="switch" id="doppler" role="switch" aria-checked="true" aria-labelledby="doppler-label"></button></div></div>
+ </div>
+ <div class="dock-bottom"><div class="status" role="status" aria-live="off"><span id="engine">INITIALIZING</span><span id="fps">— FPS</span><span id="resolution">—</span><span id="time-readout">T + 000.0</span></div><div class="quality-control"><label for="quality">RENDER QUALITY</label><select id="quality" aria-label="Render quality"><option value="auto" selected>Adaptive</option><option value="low">Performance</option><option value="high">High</option><option value="ultra">Ultra</option></select></div></div>
+</section>
+<button class="icon-button reveal" id="reveal" aria-label="Show controls" title="Show controls · H"><svg viewBox="0 0 20 20"><path d="M4 5h12M4 10h12M4 15h12"/></svg></button>
+<div class="loading" id="loading"><div class="loading-ring"></div><p>TRACING LIGHT THROUGH SPACETIME</p></div>
+<div class="toast" id="toast" role="status"></div>
+<dialog id="info"><button class="icon-button dialog-close" id="close-info" aria-label="Close information">×</button><div class="eyebrow">Inside the observatory</div><h2>Light takes the long way.</h2><p>Each pixel follows a light ray through the curved spacetime of a spherical, non-rotating black hole. Some rays escape to the stars. Others cross the glowing disc, orbit the hole, or disappear past the event horizon.</p><p>The arc above the shadow is the far side of the same disc, bent into view by gravity. The narrower images below and around the shadow come from light taking a longer route.</p><p>The disc begins at the innermost stable circular orbit, 6 GM/c². Orbital motion brightens the approaching side; gravitational redshift changes the light’s colour. Drag to orbit and see how the geometry changes.</p><div class="keys"><span><kbd>SPACE</kbd> Pause / resume</span><span><kbd>H</kbd> Hide controls</span><span><kbd>R</kbd> Reset observer</span><span><kbd>F</kbd> Fullscreen</span></div><p class="model-note">Inspired by Interstellar. This is a numerical Schwarzschild visualization with artistic disc turbulence and bloom, rather than the film’s full rotating Kerr model. Time is illustrative. No external libraries or assets.</p><p class="model-note"><a href="https://arxiv.org/abs/1409.3645" target="_blank" rel="noopener noreferrer">Light-path model</a> &nbsp;·&nbsp; <a href="https://arxiv.org/abs/1502.03808" target="_blank" rel="noopener noreferrer">Interstellar rendering paper</a></p></dialog>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+const canvas=$('universe');
+const state={inclination:8,distance:44,exposure:1,yaw:0,lensing:true,doppler:true,paused:false,time:0,quality:'auto'};
+const defaults={...state};
+let gl,renderer=null,lastTime=0,frameCount=0,fpsStart=0,resizeNeeded=true,raf=0,toastTimer=0;
+function toast(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2800)}
+function updateControls(){for(const id of ['inclination','distance','exposure']){const el=$(id);el.value=state[id];el.style.setProperty('--progress',100*(state[id]-Number(el.min))/(Number(el.max)-Number(el.min))+'%')}$('inclination-value').textContent=state.inclination.toFixed(1).replace('.0','')+'°';$('distance-value').textContent=state.distance.toFixed(1).replace('.0','')+' GM/c²';$('exposure-value').textContent=state.exposure.toFixed(2)+'×';for(const id of ['lensing','doppler'])$(id).setAttribute('aria-checked',String(state[id]));$('pause-label').textContent=state.paused?'Resume':'Pause';$('pause').setAttribute('aria-label',state.paused?'Resume simulation':'Pause simulation');$('pause-icon').innerHTML=state.paused?'<path d="M5 3l7 5-7 5z"/>':'<path d="M5 3v10M11 3v10"/>';$('live-dot').classList.toggle('paused',state.paused);$('live-label').textContent=state.paused?'SIMULATION PAUSED':'LIVE SIMULATION'}
+for(const id of ['inclination','distance','exposure'])$(id).addEventListener('input',()=>{state[id]=Number($(id).value);updateControls()});
+for(const id of ['lensing','doppler'])$(id).addEventListener('click',()=>{state[id]=!state[id];updateControls()});
+function togglePause(){state.paused=!state.paused;updateControls()}
+function reset(){Object.assign(state,defaults);$('quality').value='auto';resizeNeeded=true;updateControls();toast('Observer reset')}
+function toggleUI(){document.body.classList.toggle('clean')}
+async function fullscreen(){try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen()}catch(e){toast('Fullscreen is unavailable in this browser')}}
+$('pause').addEventListener('click',togglePause);$('reset').addEventListener('click',reset);$('hide').addEventListener('click',toggleUI);$('reveal').addEventListener('click',toggleUI);$('fullscreen').addEventListener('click',fullscreen);
+$('quality').addEventListener('change',()=>{state.quality=$('quality').value;resizeNeeded=true;renderer?.resetQuality()});
+$('about').addEventListener('click',()=>{$('info').showModal()});$('close-info').addEventListener('click',()=>$('info').close());$('info').addEventListener('click',e=>{if(e.target===$('info')){const r=$('info').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('info').close()}});
+document.addEventListener('keydown',e=>{if(e.target.matches('input,select,button')||$('info').open)return;if(e.code==='Space'){e.preventDefault();togglePause()}else if(e.key.toLowerCase()==='h')toggleUI();else if(e.key.toLowerCase()==='r')reset();else if(e.key.toLowerCase()==='f')fullscreen()});
+let pointer=null;
+function setupPointer(surface){surface.addEventListener('pointerdown',e=>{if(e.button!==0)return;pointer={id:e.pointerId,x:e.clientX,y:e.clientY};surface.setPointerCapture(e.pointerId);surface.classList.add('dragging')});surface.addEventListener('pointermove',e=>{if(!pointer||e.pointerId!==pointer.id)return;if((e.buttons&1)===0){pointer=null;surface.classList.remove("dragging");return;}state.yaw+=(e.clientX-pointer.x)*.006;state.inclination=Math.max(2,Math.min(80,state.inclination+(e.clientY-pointer.y)*.13));pointer.x=e.clientX;pointer.y=e.clientY;updateControls()});function release(e){if(pointer&&pointer.id===e.pointerId){pointer=null;surface.classList.remove('dragging')}}surface.addEventListener('pointerup',release);surface.addEventListener('pointercancel',release);surface.addEventListener('wheel',e=>{e.preventDefault();state.distance=Math.max(28,Math.min(75,state.distance+e.deltaY*.025));updateControls()},{passive:false})}
+setupPointer(canvas);
+window.addEventListener('resize',()=>resizeNeeded=true);document.addEventListener('fullscreenchange',()=>{resizeNeeded=true;$('fullscreen').setAttribute('aria-label',document.fullscreenElement?'Exit fullscreen':'Enter fullscreen')});
+updateControls();
+
+const vertex=`#version 300 es
+precision highp float;
+out vec2 vUV;
+void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));vUV=p;gl_Position=vec4(p*2.0-1.0,0.0,1.0);}`;
+const fragment=`#version 300 es
+precision highp float;
+in vec2 vUV;
+out vec4 fragColor;
+uniform vec2 uResolution;
+uniform float uTime,uAngle,uDistance,uYaw;
+uniform bool uLensing,uDoppler;
+uniform int uSteps;
+const float PI=3.14159265359;
+float hash31(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
+float hash21(vec2 p){return hash31(vec3(p,17.37));}
+float noise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(mix(hash31(i),hash31(i+vec3(1,0,0)),f.x),mix(hash31(i+vec3(0,1,0)),hash31(i+vec3(1,1,0)),f.x),f.y),mix(mix(hash31(i+vec3(0,0,1)),hash31(i+vec3(1,0,1)),f.x),mix(hash31(i+vec3(0,1,1)),hash31(i+vec3(1,1,1)),f.x),f.y),f.z);}
+float fbm(vec3 p){float a=.55,s=0.0;for(int i=0;i<4;i++){s+=a*noise(p);p=p*2.03+vec3(11.2,7.1,4.8);a*=.48;}return s;}
+vec3 temperature(float kelvin){float t=clamp(kelvin,1200.0,20000.0)/100.0;vec3 c;if(t<=66.0){c.r=1.0;c.g=clamp(.39008158*log(t)-.63184144,0.0,1.0);c.b=t<=19.0?0.0:clamp(.54320679*log(t-10.0)-1.19625409,0.0,1.0);}else{c.r=clamp(1.29293619*pow(t-60.0,-.13320476),0.0,1.0);c.g=clamp(1.12989086*pow(t-60.0,-.07551485),0.0,1.0);c.b=1.0;}return pow(c,vec3(2.2));}
+vec3 stars(vec3 d){d=normalize(d);vec2 sky=vec2(atan(d.z,d.x)/(2.0*PI)+.5,asin(clamp(d.y,-1.0,1.0))/PI+.5);vec3 color=vec3(.00045,.0006,.001);float band=exp(-pow((d.y*.78+d.x*.31+d.z*.14+.1)*5.0,2.0));float neb=fbm(d*7.0+4.0);color+=vec3(.003,.004,.006)*band*pow(neb,3.0);for(int layer=0;layer<2;layer++){float grid=layer==0?410.0:190.0;vec2 p=sky*vec2(grid*2.0,grid);vec2 cell=floor(p);vec2 f=fract(p);for(int y=-1;y<=1;y++){for(int x=-1;x<=1;x++){vec2 offset=vec2(x,y),id=cell+offset;float h=hash21(id+float(layer)*371.1);vec2 pos=vec2(hash21(id+7.7),hash21(id+31.3));vec2 delta=f-offset-pos;delta.x*=max(.22,cos((sky.y-.5)*PI));float radius=layer==0?.10:.065;float point=exp(-dot(delta,delta)/(radius*radius));float present=step(layer==0?.979:.987,h);float bright=.045+pow(hash21(id+123.4),5.0)*1.4;vec3 tint=mix(vec3(.55,.68,1.0),vec3(1.0,.79,.52),hash21(id+41.8));color+=tint*point*present*bright;}}}return color;}
+vec3 accel(vec3 p,float l2){float r2=dot(p,p);return -3.0*l2*p/(r2*r2*sqrt(r2));}
+vec3 disc(vec3 hit,vec3 velocity,float cameraR){float r=length(hit.xz);float phi=atan(hit.z,hit.x);float omega=pow(6.0/r,1.5);float phase=phi-uTime*.42*omega;vec2 q=vec2(cos(phase),sin(phase))*r;float turbulence=fbm(vec3(q*.7,log(r)*4.0));float filaments=sin(r*23.0+turbulence*9.0+sin(phase*3.0)*.6);float fine=noise(vec3(q*3.2,r*7.0));float density=.66+.53*turbulence+.13*filaments+.11*fine;
+float flux=max(.0001,1.0-sqrt(6.0/r));float edge=smoothstep(6.0,6.35,r)*(1.0-smoothstep(17.0,22.0,r));float radial=pow(6.0/r,2.6)*pow(flux,.4);float shift=1.0;
+if(uDoppler){vec3 er=normalize(hit);float f=1.0-2.0/r;float nr=dot(velocity,er);vec3 outgoing=normalize(-(velocity-er*nr+er*nr/sqrt(f)));vec3 orbit=normalize(vec3(-hit.z,0.0,hit.x));float beta=sqrt(1.0/(r-2.0));float gamma=1.0/sqrt(1.0-beta*beta);shift=sqrt(f/(1.0-2.0/cameraR))/(gamma*(1.0-beta*dot(outgoing,orbit)));}
+float temp=11800.0*pow(6.0/r,.75)*pow(flux,.25);vec3 color=temperature(temp*shift);float intensity=10.5*radial*density*edge*pow(shift,3.0);return color*intensity;}
+void main(){vec2 uv=(gl_FragCoord.xy-.5*uResolution)/uResolution.y;uv.y-=.035;float pitch=uAngle*PI/180.0;vec3 camera=uDistance*vec3(cos(pitch)*sin(uYaw),sin(pitch),cos(pitch)*cos(uYaw));vec3 forward=-normalize(camera);vec3 right=normalize(cross(forward,vec3(0,1,0)));vec3 up=cross(right,forward);vec3 ray=normalize(forward+right*uv.x*.64+up*uv.y*.64);vec3 er=normalize(camera);float nr=dot(ray,er);float f=1.0-2.0/uDistance;vec3 v=uLensing?ray+er*nr*(sqrt(f)-1.0):ray;vec3 p=camera;vec3 angular=cross(p,v);float l2=dot(angular,angular);vec3 color=vec3(0.0);bool done=false;
+for(int i=0;i<340;i++){if(i>=uSteps)break;float r=length(p);if(r<2.025){done=true;break;}if(r>85.0&&dot(p,v)>0.0){color=stars(v);done=true;break;}float stepSize=clamp(r*.045,.055,1.65);vec3 a=uLensing?accel(p,l2):vec3(0);vec3 vh=v+.5*stepSize*a;vec3 next=p+stepSize*vh;vec3 vn=vh+.5*stepSize*(uLensing?accel(next,l2):vec3(0));
+if(p.y*next.y<0.0){float t=p.y/(p.y-next.y);vec3 hit=mix(p,next,t);float rh=length(hit.xz);if(rh>6.0&&rh<22.0){color=disc(hit,mix(v,vn,t),uDistance);done=true;break;}}
+p=next;v=vn;
+}
+// Unresolved paths near the photon sphere remain dark, rather than inventing light.
+fragColor=vec4(min(color/8.0,vec3(1.0)),1.0);
+}`;
+const blurFragment=`#version 300 es
+precision highp float;
+in vec2 vUV;out vec4 fragColor;
+uniform sampler2D uImage;uniform vec2 uDirection;uniform bool uThreshold;
+vec3 sampleColor(vec2 uv){vec3 c=texture(uImage,uv).rgb;return uThreshold?max(c-vec3(.075),vec3(0.0)):c;}
+void main(){vec3 c=sampleColor(vUV)*.227027;c+=sampleColor(vUV+uDirection*1.384615)*.316216;c+=sampleColor(vUV-uDirection*1.384615)*.316216;c+=sampleColor(vUV+uDirection*3.230769)*.070270;c+=sampleColor(vUV-uDirection*3.230769)*.070270;fragColor=vec4(c,1.0);}`;
+const composeFragment=`#version 300 es
+precision highp float;
+in vec2 vUV;out vec4 fragColor;
+uniform sampler2D uScene,uBloom;uniform float uExposure;uniform vec2 uResolution;
+vec3 aces(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.0,1.0);}
+void main(){vec3 base=texture(uScene,vUV).rgb*8.0;vec3 glow=texture(uBloom,vUV).rgb*8.0;vec3 color=aces((base+glow*.48)*uExposure);color=pow(color,vec3(1.0/2.2));vec2 q=vUV-.5;color*=1.0-.30*dot(q,q);float grain=fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453);color+=(grain-.5)/255.0;fragColor=vec4(color,1.0);}`;
+
+function createRenderer(){
+gl=canvas.getContext('webgl2',{alpha:false,antialias:false,depth:false,stencil:false,powerPreference:'high-performance',preserveDrawingBuffer:true});
+if(!gl)throw new Error('WebGL 2 is unavailable');
+function shader(type,source){const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){const log=gl.getShaderInfoLog(s);gl.deleteShader(s);throw new Error(log)}return s}
+const vs=shader(gl.VERTEX_SHADER,vertex);
+const floatTargets=Boolean(gl.getExtension('EXT_color_buffer_float'));
+function program(source,names){const fs=shader(gl.FRAGMENT_SHADER,source),p=gl.createProgram();gl.attachShader(p,vs);gl.attachShader(p,fs);gl.linkProgram(p);gl.deleteShader(fs);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));const loc={};for(const n of names)loc[n]=gl.getUniformLocation(p,n);return {p,loc}}
+const scene=program(fragment,['uResolution','uTime','uAngle','uDistance','uYaw','uLensing','uDoppler','uSteps']);
+const blur=program(blurFragment,['uImage','uDirection','uThreshold']);
+const compose=program(composeFragment,['uScene','uBloom','uExposure','uResolution']);
+gl.deleteShader(vs);gl.bindVertexArray(gl.createVertexArray());gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);
+let width=0,height=0,sceneTarget,blurA,blurB,scale=.68,steps=300,warmup=0,qualityTick=0;
+function target(w,h){const texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,texture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texImage2D(gl.TEXTURE_2D,0,floatTargets?gl.RGBA16F:gl.RGBA8,w,h,0,gl.RGBA,floatTargets?gl.HALF_FLOAT:gl.UNSIGNED_BYTE,null);const framebuffer=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,framebuffer);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,texture,0);if(gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE)throw new Error('Render target is incomplete');return {texture,framebuffer,w,h}}
+function dispose(t){if(t){gl.deleteTexture(t.texture);gl.deleteFramebuffer(t.framebuffer)}}
+function resize(){const dpr=Math.min(window.devicePixelRatio||1,1.75);canvas.width=Math.max(1,Math.round(innerWidth*dpr));canvas.height=Math.max(1,Math.round(innerHeight*dpr));const modes={low:.45,high:.85,ultra:1};const fraction=state.quality==='auto'?scale:modes[state.quality];const maxPixels=state.quality==='ultra'?2400000:1250000;let w=Math.round(canvas.width*fraction),h=Math.round(canvas.height*fraction);if(w*h>maxPixels){const k=Math.sqrt(maxPixels/(w*h));w=Math.round(w*k);h=Math.round(h*k)}width=Math.max(2,w);height=Math.max(2,h);dispose(sceneTarget);dispose(blurA);dispose(blurB);sceneTarget=target(width,height);blurA=target(Math.max(2,width>>2),Math.max(2,height>>2));blurB=target(blurA.w,blurA.h);steps=state.quality==='low'?260:340;$('resolution').textContent=width+' × '+height;resizeNeeded=false;warmup=10}
+function bindTexture(t,unit){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,t)}
+function render(){if(resizeNeeded)resize();gl.bindFramebuffer(gl.FRAMEBUFFER,sceneTarget.framebuffer);gl.viewport(0,0,width,height);gl.useProgram(scene.p);const l=scene.loc;gl.uniform2f(l.uResolution,width,height);gl.uniform1f(l.uTime,state.time);gl.uniform1f(l.uAngle,state.inclination);gl.uniform1f(l.uDistance,state.distance);gl.uniform1f(l.uYaw,state.yaw);gl.uniform1i(l.uLensing,state.lensing);gl.uniform1i(l.uDoppler,state.doppler);gl.uniform1i(l.uSteps,steps);gl.drawArrays(gl.TRIANGLES,0,3);
+gl.useProgram(blur.p);gl.uniform1i(blur.loc.uImage,0);gl.bindFramebuffer(gl.FRAMEBUFFER,blurA.framebuffer);gl.viewport(0,0,blurA.w,blurA.h);bindTexture(sceneTarget.texture,0);gl.uniform2f(blur.loc.uDirection,3.0/width,0);gl.uniform1i(blur.loc.uThreshold,1);gl.drawArrays(gl.TRIANGLES,0,3);
+gl.bindFramebuffer(gl.FRAMEBUFFER,blurB.framebuffer);bindTexture(blurA.texture,0);gl.uniform2f(blur.loc.uDirection,0,1.5/blurA.h);gl.uniform1i(blur.loc.uThreshold,0);gl.drawArrays(gl.TRIANGLES,0,3);
+gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,canvas.width,canvas.height);gl.useProgram(compose.p);bindTexture(sceneTarget.texture,0);bindTexture(blurB.texture,1);gl.uniform1i(compose.loc.uScene,0);gl.uniform1i(compose.loc.uBloom,1);gl.uniform1f(compose.loc.uExposure,state.exposure);gl.uniform2f(compose.loc.uResolution,canvas.width,canvas.height);gl.drawArrays(gl.TRIANGLES,0,3);if(warmup>0)warmup--}
+resize();
+return {render,resetQuality(){scale=.68;qualityTick=0},adapt(fps){if(state.quality!=='auto'||warmup>0)return;qualityTick++;if(qualityTick<2)return;qualityTick=0;let next=scale;if(fps<24)next=Math.max(.32,scale*.83);else if(fps>52)next=Math.min(.9,scale*1.08);if(Math.abs(next-scale)>.025){scale=next;resizeNeeded=true}},get size(){return [width,height]},get error(){return gl.getError()}};
+}
+
+// A self-contained software renderer follows the same curved light paths.
+// Replacement for createFallback(reason) in the standalone observatory.
+function createFallback(reason) {
+  canvas.style.display = 'none';
+  const surface = $('fallback');
+  surface.style.display = 'block';
+  surface.style.touchAction = 'none';
+  surface.style.cursor = 'grab';
+  setupPointer(surface);
+  const context = surface.getContext('2d', { alpha: false });
+  const source = document.createElement('canvas');
+  const sourceContext = source.getContext('2d', { alpha: false });
+  const bloom = document.createElement('canvas');
+  const bloomContext = bloom.getContext('2d');
+  let worker, latestFrame = null, drawNeeded = false, hasFrame = false;
+  let failed = false, displayWidth = 0, displayHeight = 0, rayWidth = 0, rayHeight = 0;
+  let lastSend = -Infinity, previousView = '', lastFrameTime = 0, measuredFPS = 0;
+  let useInline = false, tracing = true;
+  $('engine').textContent = 'CPU · TRACING LIGHT';
+
+  // This entire function is serialized into a Blob Worker. It has no external dependencies.
+  function softwareTracer(scope) {
+    const TAU = Math.PI * 2, TW = 1024, TH = 256;
+    let view = null, map = null, generation = 0, building = false, queuedTimer = 0;
+    let offscreen = null, offscreenContext = null, image = null;
+    let lastSignature = '', lastToneExposure = -1, tone = new Uint8Array(65536);
+    let stopped = false;
+    const texture = new Float32Array(TW * TH);
+    const temperatureTable = new Float32Array(2048 * 3);
+    function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
+    function smooth(x) { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); }
+    function random(x, y, seed = 0) {
+      let n = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263) ^ seed;
+      n = Math.imul(n ^ (n >>> 13), 1274126177);
+      return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+    }
+    function periodicNoise(x, y, period, seed) {
+      const ix = Math.floor(x), iy = Math.floor(y), fx = smooth(x - ix), fy = smooth(y - iy);
+      const x0 = ((ix % period) + period) % period, x1 = (x0 + 1) % period;
+      const a = random(x0, iy, seed), b = random(x1, iy, seed);
+      const c = random(x0, iy + 1, seed), d = random(x1, iy + 1, seed);
+      return (a + (b - a) * fx) * (1 - fy) + (c + (d - c) * fx) * fy;
+    }
+    function makeDiscTexture() {
+      for (let j = 0; j < TH; j++) {
+        const radius = 6 + 16 * j / (TH - 1);
+        for (let i = 0; i < TW; i++) {
+          const phase = i / TW, radial = j / (TH - 1);
+          const a = periodicNoise(phase * 8, radial * 6, 8, 3917);
+          const b = periodicNoise(phase * 16, radial * 12, 16, 7711);
+          const c = periodicNoise(phase * 32, radial * 24, 32, 12983);
+          const d = periodicNoise(phase * 64, radial * 48, 64, 21961);
+          const turbulence = a * .52 + b * .27 + c * .14 + d * .07;
+          const ribbons = Math.sin(radius * 23 + turbulence * 9 + Math.sin(phase * TAU * 3) * .65);
+          texture[j * TW + i] = .55 + .82 * turbulence + .18 * ribbons + .09 * d;
+        }
+      }
+    }
+    function makeTemperatures() {
+      for (let i = 0; i < 2048; i++) {
+        const t = (1200 + i * (20000 - 1200) / 2047) / 100;
+        let r, g, b;
+        if (t <= 66) {
+          r = 1; g = clamp(.39008158 * Math.log(t) - .63184144, 0, 1);
+          b = t <= 19 ? 0 : clamp(.54320679 * Math.log(t - 10) - 1.19625409, 0, 1);
+        } else {
+          r = clamp(1.29293619 * Math.pow(t - 60, -.13320476), 0, 1);
+          g = clamp(1.12989086 * Math.pow(t - 60, -.07551485), 0, 1); b = 1;
+        }
+        temperatureTable[i * 3] = Math.pow(r, 2.2);
+        temperatureTable[i * 3 + 1] = Math.pow(g, 2.2);
+        temperatureTable[i * 3 + 2] = Math.pow(b, 2.2);
+      }
+    }
+    function putTemperature(destination, index, kelvin, intensity) {
+      const t = Math.round(clamp((kelvin - 1200) / 18800, 0, 1) * 2047) * 3;
+      destination[index] = temperatureTable[t] * intensity;
+      destination[index + 1] = temperatureTable[t + 1] * intensity;
+      destination[index + 2] = temperatureTable[t + 2] * intensity;
+    }
+    function sampleSky(dx, dy, dz, out, index) {
+      const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      dx /= length; dy /= length; dz /= length;
+      const sx = Math.atan2(dz, dx) / TAU + .5;
+      const sy = Math.asin(clamp(dy, -1, 1)) / Math.PI + .5;
+      const band = Math.exp(-Math.pow((dy * .78 + dx * .31 + dz * .14 + .1) * 5, 2));
+      const dust = .5 + .25 * Math.sin(dx * 37 + dz * 29) + .25 * Math.sin(dy * 51 - dz * 17);
+      let cr = .00055 + .0032 * band * dust * dust;
+      let cg = .00075 + .0040 * band * dust * dust;
+      let cb = .0012 + .0060 * band * dust * dust;
+      for (let layer = 0; layer < 2; layer++) {
+        const grid = layer ? 190 : 410, px = sx * grid * 2, py = sy * grid;
+        const ix = Math.floor(px), iy = Math.floor(py), fx = px - ix, fy = py - iy;
+        const width = grid * 2, seed = layer * 29117 + 391;
+        for (let yy = -1; yy <= 1; yy++) for (let xx = -1; xx <= 1; xx++) {
+          const cellX = ((ix + xx) % width + width) % width, cellY = iy + yy;
+          const h = random(cellX, cellY, seed);
+          if (h < (layer ? .986 : .978)) continue;
+          const x = (fx - xx - random(cellX, cellY, seed + 713)) * Math.max(.22, Math.cos((sy - .5) * Math.PI));
+          const y = fy - yy - random(cellX, cellY, seed + 1717);
+          const radius = layer ? .07 : .115;
+          const point = Math.exp(-(x * x + y * y) / (radius * radius));
+          if (point < .0001) continue;
+          const brightness = (.055 + Math.pow(random(cellX, cellY, seed + 2273), 5) * 1.3) * point;
+          const tint = random(cellX, cellY, seed + 3167);
+          cr += (.57 + .43 * tint) * brightness;
+          cg += (.69 + .10 * tint) * brightness;
+          cb += (1 - .46 * tint) * brightness;
+        }
+      }
+      out[index] = cr; out[index + 1] = cg; out[index + 2] = cb;
+    }
+    function cameraKey(v) {
+      return [v.width, v.height, v.inclination.toFixed(2), v.distance.toFixed(2), v.yaw.toFixed(3), v.lensing ? 1 : 0, v.quality === 'low' ? 280 : 340].join('/');
+    }
+    function delay() { return new Promise(resolve => setTimeout(resolve, 0)); }
+    async function trace(v, token) {
+      const w = v.width, h = v.height, count = w * h;
+      const result = { width: w, height: h, key: cameraKey(v),
+        type: new Uint8Array(count), plain: new Float32Array(count * 3),
+        shifted: new Float32Array(count * 3), phase: new Float32Array(count),
+        shear: new Float32Array(count), radialRow: new Uint16Array(count), radialFraction: new Float32Array(count) };
+      const pitch = v.inclination * Math.PI / 180, sinYaw = Math.sin(v.yaw), cosYaw = Math.cos(v.yaw);
+      const erx = Math.cos(pitch) * sinYaw, ery = Math.sin(pitch), erz = Math.cos(pitch) * cosYaw;
+      const cx = v.distance * erx, cy = v.distance * ery, cz = v.distance * erz;
+      const rx = cosYaw, rz = -sinYaw;
+      const ux = -Math.sin(pitch) * sinYaw, uy = Math.cos(pitch), uz = -Math.sin(pitch) * cosYaw;
+      const cameraF = 1 - 2 / v.distance, cameraCorrection = Math.sqrt(cameraF) - 1;
+      const maxSteps = v.quality === 'low' ? 280 : 340;
+      let lastYield = performance.now(), lastProgress = lastYield;
+      for (let py = 0; py < h; py++) {
+        // ImageData rows are top-down; the shader's camera coordinates are bottom-up.
+        const sy = ((h - py - .5) - .5 * h) / h - .035;
+        for (let px = 0; px < w; px++) {
+          const n = py * w + px, ci = n * 3, sx = (px + .5 - .5 * w) / h;
+          let vx = -erx + rx * sx * .64 + ux * sy * .64;
+          let vy = -ery + uy * sy * .64;
+          let vz = -erz + rz * sx * .64 + uz * sy * .64;
+          let norm = 1 / Math.sqrt(vx * vx + vy * vy + vz * vz);
+          vx *= norm; vy *= norm; vz *= norm;
+          if (v.lensing) {
+            const radial = vx * erx + vy * ery + vz * erz;
+            vx += erx * radial * cameraCorrection;
+            vy += ery * radial * cameraCorrection;
+            vz += erz * radial * cameraCorrection;
+          }
+          const lx = cy * vz - cz * vy, ly = cz * vx - cx * vz, lz = cx * vy - cy * vx;
+          const force = v.lensing ? -3 * (lx * lx + ly * ly + lz * lz) : 0;
+          let x = cx, y = cy, z = cz;
+          for (let step = 0; step < maxSteps; step++) {
+            const r2 = x * x + y * y + z * z, r = Math.sqrt(r2);
+            if (r < 2.025) break;
+            if (r > 85 && x * vx + y * vy + z * vz > 0) {
+              result.type[n] = 2; sampleSky(vx, vy, vz, result.plain, ci); break;
+            }
+            const ds = clamp(r * .045, .055, 1.65);
+            const a = force / (r2 * r2 * r);
+            const hx = vx + ds * .5 * a * x, hy = vy + ds * .5 * a * y, hz = vz + ds * .5 * a * z;
+            const nx = x + ds * hx, ny = y + ds * hy, nz = z + ds * hz;
+            const nr2 = nx * nx + ny * ny + nz * nz;
+            const na = force / (nr2 * nr2 * Math.sqrt(nr2));
+            const nvx = hx + ds * .5 * na * nx, nvy = hy + ds * .5 * na * ny, nvz = hz + ds * .5 * na * nz;
+            if (y * ny < 0) {
+              const t = y / (y - ny), hitx = x + (nx - x) * t, hitz = z + (nz - z) * t;
+              const radius = Math.sqrt(hitx * hitx + hitz * hitz);
+              if (radius > 6 && radius < 22) {
+                result.type[n] = 1;
+                const coordinate = (radius - 6) / 16 * (TH - 1);
+                result.radialRow[n] = Math.min(TH - 2, Math.floor(coordinate));
+                result.radialFraction[n] = coordinate - result.radialRow[n];
+                result.phase[n] = (Math.atan2(hitz, hitx) / TAU + .5) * TW;
+                result.shear[n] = .42 * Math.pow(6 / radius, 1.5) * TW / TAU;
+                const ex = hitx / radius, ez = hitz / radius, f = 1 - 2 / radius;
+                let ox = -(vx + (nvx - vx) * t), oy = -(vy + (nvy - vy) * t), oz = -(vz + (nvz - vz) * t);
+                const vr = ox * ex + oz * ez;
+                ox += ex * vr * (1 / Math.sqrt(f) - 1);
+                oz += ez * vr * (1 / Math.sqrt(f) - 1);
+                norm = 1 / Math.sqrt(ox * ox + oy * oy + oz * oz);
+                const toward = (ox * -ez + oz * ex) * norm;
+                const beta = Math.sqrt(1 / (radius - 2)), gamma = 1 / Math.sqrt(1 - beta * beta);
+                const shift = Math.sqrt(f / cameraF) / (gamma * (1 - beta * toward));
+                const flux = Math.max(.0001, 1 - Math.sqrt(6 / radius));
+                const edge = smooth((radius - 6) / .35) * (1 - smooth((radius - 17) / 5));
+                const intensity = 10.5 * Math.pow(6 / radius, 2.6) * Math.pow(flux, .4) * edge;
+                const temp = 10800 * Math.pow(6 / radius, .75) * Math.pow(flux, .25);
+                putTemperature(result.plain, ci, temp, intensity);
+                putTemperature(result.shifted, ci, temp * shift, intensity * shift * shift * shift);
+                break;
+              }
+            }
+            x = nx; y = ny; z = nz; vx = nvx; vy = nvy; vz = nvz;
+          }
+        }
+        const now = performance.now();
+        if (now - lastYield > 12) {
+          if (now - lastProgress > 120) {
+            scope.postMessage({ kind: 'progress', percent: Math.round(py / h * 100), width: w, height: h });
+            lastProgress = now;
+          }
+          await delay(); lastYield = performance.now();
+          if (token !== generation || stopped) return null;
+        }
+      }
+      return token === generation ? result : null;
+    }
+    function makeTone(exposure) {
+      for (let i = 0; i < tone.length; i++) {
+        const x = i / 4096 * exposure;
+        const aces = clamp((x * (2.51 * x + .03)) / (x * (2.43 * x + .59) + .14), 0, 1);
+        tone[i] = Math.round(Math.pow(aces, 1 / 2.2) * 255);
+      }
+      lastToneExposure = exposure;
+    }
+    function prepareImage(w, h) {
+      offscreen = null; offscreenContext = null;
+      try {
+        if (typeof OffscreenCanvas !== 'undefined') {
+          offscreen = new OffscreenCanvas(w, h);
+          offscreenContext = offscreen.getContext('2d', { alpha: false });
+          if (!offscreenContext || typeof offscreen.transferToImageBitmap !== 'function') offscreenContext = null;
+        }
+      } catch (error) { offscreenContext = null; }
+      image = offscreenContext ? offscreenContext.createImageData(w, h) : { data: new Uint8ClampedArray(w * h * 4) };
+    }
+    function drawFrame(force = false) {
+      if (!map || !view || stopped) return;
+      const signature = [view.time.toFixed(3), view.exposure.toFixed(3), view.doppler ? 1 : 0, map.key].join('/');
+      if (!force && signature === lastSignature) return;
+      lastSignature = signature;
+      if (view.exposure !== lastToneExposure) makeTone(view.exposure);
+      const data = image.data, plain = map.plain, light = view.doppler ? map.shifted : plain;
+      const count = map.width * map.height, types = map.type;
+      for (let n = 0; n < count; n++) {
+        const ci = n * 3, oi = n * 4;
+        let r = 0, g = 0, b = 0;
+        if (types[n] === 1) {
+          let phase = map.phase[n] - view.time * map.shear[n];
+          phase -= Math.floor(phase / TW) * TW;
+          const p0 = Math.floor(phase), p1 = (p0 + 1) & (TW - 1), f = phase - p0;
+          const row = map.radialRow[n] * TW, row2 = row + TW;
+          const a = texture[row + p0] + (texture[row + p1] - texture[row + p0]) * f;
+          const c = texture[row2 + p0] + (texture[row2 + p1] - texture[row2 + p0]) * f;
+          const density = a + (c - a) * map.radialFraction[n];
+          r = light[ci] * density; g = light[ci + 1] * density; b = light[ci + 2] * density;
+        } else if (types[n] === 2) {
+          r = plain[ci]; g = plain[ci + 1]; b = plain[ci + 2];
+        }
+        data[oi] = tone[Math.min(65535, Math.max(0, Math.round(r * 4096)))];
+        data[oi + 1] = tone[Math.min(65535, Math.max(0, Math.round(g * 4096)))];
+        data[oi + 2] = tone[Math.min(65535, Math.max(0, Math.round(b * 4096)))];
+        data[oi + 3] = 255;
+      }
+      if (offscreenContext) {
+        try {
+          offscreenContext.putImageData(image, 0, 0);
+          const bitmap = offscreen.transferToImageBitmap();
+          scope.postMessage({ kind: 'frame', width: map.width, height: map.height, bitmap }, [bitmap]);
+          return;
+        } catch (error) { offscreenContext = null; }
+      }
+      const buffer = data.buffer;
+      scope.postMessage({ kind: 'frame', width: map.width, height: map.height, buffer }, [buffer]);
+      image = { data: new Uint8ClampedArray(map.width * map.height * 4) };
+    }
+    async function buildLatest() {
+      if (building || !view || stopped) return;
+      const snapshot = { ...view }, token = generation;
+      if (map && map.key === cameraKey(snapshot)) return;
+      building = true;
+      scope.postMessage({ kind: 'progress', percent: 0, width: snapshot.width, height: snapshot.height });
+      try {
+        const result = await trace(snapshot, token);
+        if (result) {
+          map = result; prepareImage(map.width, map.height);
+          scope.postMessage({ kind: 'ready', width: map.width, height: map.height });
+          drawFrame(true);
+        }
+      } catch (error) { stopped = true; scope.postMessage({ kind: 'error', message: error.message }); }
+      building = false;
+      if (view && (!map || map.key !== cameraKey(view))) {
+        clearTimeout(queuedTimer); queuedTimer = setTimeout(buildLatest, 65);
+      }
+    }
+    scope.onmessage = event => {
+      const incoming = event.data;
+      if (incoming.kind === 'stop') { stopped = true; return; }
+      if (incoming.kind !== 'view') return;
+      const oldKey = view ? cameraKey(view) : '', newKey = cameraKey(incoming);
+      view = incoming;
+      if (oldKey !== newKey) {
+        generation++;
+        clearTimeout(queuedTimer); queuedTimer = setTimeout(buildLatest, map ? 65 : 5);
+      }
+    };
+    makeDiscTexture(); makeTemperatures();
+    setInterval(() => drawFrame(), 50);
+  }
+
+  function receive(event) {
+    const message = event.data;
+    if (message.kind === 'progress') {
+      tracing = true;
+      $('engine').textContent = 'CPU · TRACING ' + message.percent + '%';
+      $('resolution').textContent = message.width + ' × ' + message.height;
+    } else if (message.kind === 'ready') {
+      tracing = false;
+      $('engine').textContent = 'CPU · RAY TRACING';
+    } else if (message.kind === 'frame') {
+      if (latestFrame && latestFrame.bitmap) latestFrame.bitmap.close();
+      latestFrame = message; drawNeeded = true; hasFrame = true;
+      const now = performance.now();
+      if (lastFrameTime && now - lastFrameTime < 500) {
+        const fps = 1000 / (now - lastFrameTime);
+        measuredFPS = measuredFPS ? measuredFPS * .82 + fps * .18 : fps;
+      }
+      lastFrameTime = now;
+      $('loading').style.opacity = '0';
+      $('loading').style.display = 'none';
+    } else if (message.kind === 'error') {
+      failed = true; tracing = false;
+      $('engine').textContent = 'CPU · RENDER ERROR';
+      $('loading').style.display = 'none';
+      console.error('Software ray tracer:', message.message);
+      toast('Software rendering interrupted');
+    }
+  }
+  function inlineWorker() {
+    useInline = true;
+    const bridge = { onmessage: null, postMessage(data) { setTimeout(() => receive({ data }), 0); } };
+    softwareTracer(bridge);
+    return { postMessage(data) { setTimeout(() => bridge.onmessage({ data }), 0); }, terminate() { bridge.onmessage({ data: { kind: 'stop' } }); } };
+  }
+  try {
+    const blob = new Blob(['(' + softwareTracer.toString() + ')(self);'], { type: 'application/javascript' });
+    const url = URL.createObjectURL(blob);
+    worker = new Worker(url); URL.revokeObjectURL(url);
+    worker.onmessage = receive;
+    worker.onerror = error => {
+      console.warn('Worker unavailable; using cooperative software tracing.', error.message);
+      worker.terminate(); worker = inlineWorker(); previousView = ''; lastSend = -Infinity; resizeNeeded = true;
+    };
+  } catch (error) { worker = inlineWorker(); }
+
+  function resizeSoftware() {
+    displayWidth = Math.max(1, Math.round(innerWidth)); displayHeight = Math.max(1, Math.round(innerHeight));
+    surface.width = displayWidth; surface.height = displayHeight;
+    const widths = { low: 460, auto: 640, high: 700, ultra: 760 };
+    const caps = { low: 150000, auto: 300000, high: 330000, ultra: 350000 };
+    const quality = widths[state.quality] ? state.quality : 'auto';
+    let w = Math.min(displayWidth, useInline ? 480 : widths[quality]);
+    let h = w * displayHeight / displayWidth;
+    const cap = useInline ? 170000 : caps[quality];
+    if (w * h > cap) { const k = Math.sqrt(cap / (w * h)); w *= k; h *= k; }
+    rayWidth = Math.max(2, Math.round(w)); rayHeight = Math.max(2, Math.round(h));
+    $('resolution').textContent = rayWidth + ' × ' + rayHeight;
+    previousView = ''; lastSend = -Infinity; resizeNeeded = false;
+    if (source.width) drawNeeded = true;
+  }
+  function drawImage() {
+    if (latestFrame) {
+      const frame = latestFrame; latestFrame = null;
+      if (source.width !== frame.width || source.height !== frame.height) {
+        source.width = frame.width; source.height = frame.height;
+        bloom.width = Math.max(2, Math.round(frame.width / 2));
+        bloom.height = Math.max(2, Math.round(frame.height / 2));
+      }
+      if (frame.bitmap) { sourceContext.drawImage(frame.bitmap, 0, 0); frame.bitmap.close(); }
+      else sourceContext.putImageData(new ImageData(new Uint8ClampedArray(frame.buffer), frame.width, frame.height), 0, 0);
+      bloomContext.clearRect(0, 0, bloom.width, bloom.height);
+      bloomContext.imageSmoothingEnabled = true;
+      bloomContext.filter = 'blur(4px)';
+      bloomContext.drawImage(source, 0, 0, bloom.width, bloom.height);
+      bloomContext.filter = 'none';
+    }
+    context.globalCompositeOperation = 'source-over'; context.globalAlpha = 1;
+    context.imageSmoothingEnabled = true; context.imageSmoothingQuality = 'high';
+    context.drawImage(source, 0, 0, displayWidth, displayHeight);
+    context.globalCompositeOperation = 'screen'; context.globalAlpha = .42;
+    context.drawImage(bloom, 0, 0, displayWidth, displayHeight);
+    context.globalCompositeOperation = 'source-over'; context.globalAlpha = 1;
+    drawNeeded = false;
+  }
+  return {
+    render() {
+      if (resizeNeeded) resizeSoftware();
+      const now = performance.now();
+      if (!failed && now - lastSend >= 45) {
+        const message = { kind: 'view', width: rayWidth, height: rayHeight,
+          inclination: state.inclination, distance: state.distance, yaw: state.yaw,
+          lensing: state.lensing, doppler: state.doppler, time: state.time,
+          exposure: state.exposure, quality: state.quality };
+        const signature = JSON.stringify(message);
+        if (signature !== previousView) { worker.postMessage(message); previousView = signature; }
+        lastSend = now;
+      }
+      if (drawNeeded && source.width) drawImage();
+    },
+    resetQuality() { previousView = ''; resizeNeeded = true; },
+    adapt() {},
+    get size() { return [rayWidth, rayHeight]; },
+    get ready() { return hasFrame || failed; },
+    get frameRate() { return measuredFPS || (hasFrame ? 20 : 0); },
+    get error() { return 0; },
+    dispose() { worker.postMessage({ kind: 'stop' }); worker.terminate(); if (latestFrame?.bitmap) latestFrame.bitmap.close(); }
+  };
+}
+
+try{renderer=createRenderer();$('engine').textContent='WEBGL 2 · RAY TRACING'}catch(e){console.info('Using software light-path renderer:',e.message);renderer=createFallback(e.message)}
+canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();cancelAnimationFrame(raf);$('engine').textContent='GPU CONTEXT LOST';toast('Graphics interrupted · restoring the simulation')});
+canvas.addEventListener('webglcontextrestored',()=>{try{renderer=createRenderer();resizeNeeded=true;lastTime=0;$('engine').textContent='WEBGL 2 · RAY TRACING';raf=requestAnimationFrame(tick)}catch(e){renderer=createFallback(e.message);resizeNeeded=true;raf=requestAnimationFrame(tick)}});
+let revealed=false;
+function tick(now){const dt=lastTime?Math.min((now-lastTime)/1000,.12):0;lastTime=now;if(!state.paused)state.time+=dt;renderer.render();if(!revealed&&renderer.ready!==false){revealed=true;$('loading').style.opacity='0';setTimeout(()=>$('loading').style.display='none',600)}frameCount++;if(!fpsStart)fpsStart=now;if(now-fpsStart>1200){const fps=renderer.frameRate??frameCount*1000/(now-fpsStart);$('fps').textContent=Math.round(fps)+' FPS';$('time-readout').textContent='T + '+state.time.toFixed(1).padStart(5,'0');renderer.adapt(fps);frameCount=0;fpsStart=now}raf=requestAnimationFrame(tick)}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(raf)}else{lastTime=0;frameCount=0;fpsStart=0;raf=requestAnimationFrame(tick)}});
+$('capture').addEventListener('click',()=>{renderer.render();const source=canvas.style.display==='none'?$('fallback'):canvas;source.toBlob(blob=>{if(!blob){toast('Could not capture this frame');return}const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='gargantua-'+new Date().toISOString().replace(/[:.]/g,'-')+'.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);toast('Image saved')},'image/png')});
+// Small read-only diagnostics for checking the standalone file in a browser.
+window.blackHoleDiagnostics=()=>({engine:$('engine').textContent,resolution:renderer.size,webglError:renderer.error,paused:state.paused,lensing:state.lensing,doppler:state.doppler,inclination:state.inclination,distance:state.distance,time:state.time,quality:state.quality});
+raf=requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
