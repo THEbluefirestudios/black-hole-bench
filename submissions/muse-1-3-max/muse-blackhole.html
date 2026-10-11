@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Gargantua — Interstellar Black Hole</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    background: #000; overflow: hidden;
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    color: #e8e2d5;
+  }
+  #scene { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; cursor: grab; touch-action: none; }
+  #ui { position: fixed; inset: 0; pointer-events: none; transition: opacity 0.35s ease; z-index: 5; }
+  body.hide-ui #ui { opacity: 0; }
+  #title { position: absolute; top: 22px; left: 26px; user-select: none; }
+  #title h1 { margin: 0; font-size: 22px; font-weight: 200; letter-spacing: 0.55em; color: #f5ede0; text-shadow: 0 0 18px rgba(255,180,100,0.35); }
+  #title p { margin: 6px 0 0 1px; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(232,226,213,0.55); }
+  #stats { position: absolute; top: 24px; right: 26px; font-size: 11px; letter-spacing: 0.14em; color: rgba(232,226,213,0.6); font-variant-numeric: tabular-nums; user-select: none; }
+  #hints { position: absolute; bottom: 20px; left: 26px; font-size: 11px; letter-spacing: 0.12em; color: rgba(232,226,213,0.5); user-select: none; }
+  #panel {
+    position: absolute; bottom: 18px; right: 22px; pointer-events: auto;
+    background: rgba(10, 12, 16, 0.62); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px; padding: 12px 14px; backdrop-filter: blur(10px);
+    font-size: 12px; min-width: 228px;
+  }
+  #panel .row { display: flex; align-items: center; gap: 8px; margin: 7px 0; }
+  #panel .row:first-child { margin-top: 0; }
+  #panel .row:last-child { margin-bottom: 0; }
+  #panel .lbl { width: 62px; letter-spacing: 0.1em; text-transform: uppercase; font-size: 10px; color: rgba(232,226,213,0.6); }
+  #panel .val { width: 34px; text-align: right; font-variant-numeric: tabular-nums; color: rgba(255,200,140,0.9); }
+  #panel button {
+    background: rgba(255,255,255,0.06); color: #e8e2d5; border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 6px; padding: 4px 10px; font-size: 11px; letter-spacing: 0.06em; cursor: pointer;
+  }
+  #panel button:hover { background: rgba(255,180,100,0.18); border-color: rgba(255,180,100,0.45); }
+  #panel button.on { background: rgba(255,170,90,0.28); border-color: rgba(255,180,100,0.7); color: #ffe9cf; }
+  #panel input[type="range"] { flex: 1; accent-color: #f5a95c; height: 18px; cursor: pointer; }
+  #nogl {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: #000; color: #e8e2d5; z-index: 20; text-align: center; padding: 24px; font-size: 14px; line-height: 1.6;
+  }
+  #nogl[hidden] { display: none; }
+  @media (max-width: 700px) {
+    #hints { display: none; }
+    #title h1 { font-size: 16px; }
+    #panel { min-width: 0; left: 12px; right: 12px; bottom: 12px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="ui">
+  <div id="title">
+    <h1>GARGANTUA</h1>
+    <p>Schwarzschild black hole &middot; geodesic lensing &middot; relativistic disk</p>
+  </div>
+  <div id="stats"></div>
+  <div id="hints">drag&nbsp;·&nbsp;orbit&nbsp;&nbsp;&nbsp;wheel&nbsp;·&nbsp;zoom&nbsp;&nbsp;&nbsp;space&nbsp;·&nbsp;pause&nbsp;&nbsp;&nbsp;R&nbsp;·&nbsp;reset&nbsp;&nbsp;&nbsp;H&nbsp;·&nbsp;hide ui</div>
+  <div id="panel">
+    <div class="row" id="qrow">
+      <span class="lbl">Quality</span>
+      <button data-q="low">Low</button><button data-q="med" class="on">Med</button><button data-q="high">High</button><button data-q="auto">Auto</button>
+    </div>
+    <div class="row">
+      <span class="lbl">Exposure</span><input id="exposure" type="range" min="0.4" max="2.2" step="0.01" value="1.15"><span class="val" id="exposureV">1.15</span>
+    </div>
+    <div class="row">
+      <span class="lbl">Disk</span><input id="disk" type="range" min="0.4" max="2.6" step="0.01" value="1.35"><span class="val" id="diskV">1.35</span>
+    </div>
+    <div class="row">
+      <span class="lbl">Scene</span>
+      <button id="pause">Pause</button>
+      <button id="orbit" class="on">Drift</button>
+      <button id="reset">Reset</button>
+    </div>
+  </div>
+</div>
+<div id="nogl" hidden><div>This demo needs WebGL.<br>Please open it in a browser with hardware acceleration enabled.</div></div>
+<script>
+(function () {
+'use strict';
+
+var canvas = document.getElementById('scene');
+var nogl = document.getElementById('nogl');
+var statsEl = document.getElementById('stats');
+
+var gl = null;
+try {
+  gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, preserveDrawingBuffer: false }) || canvas.getContext('experimental-webgl');
+} catch (e) { gl = null; }
+if (!gl) { nogl.hidden = false; return; }
+
+var VS = 'attribute vec2 a_pos;\nvoid main(){gl_Position = vec4(a_pos, 0.0, 1.0);}';
+
+var FS = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform vec2 u_res;
+uniform float u_time;
+uniform float u_yaw;
+uniform float u_pitch;
+uniform float u_dist;
+uniform float u_steps;
+uniform float u_stepSize;
+uniform float u_gain;
+uniform float u_exposure;
+#define MAXSTEPS 400
+#define DISK_IN 3.0
+#define DISK_OUT 12.0
+#define ESC2 3600.0
+float hash12(vec2 p) {
+  vec3 q = fract(vec3(p.xyx) * 0.1031);
+  q += dot(q, q.yzx + 33.33);
+  return fract((q.x + q.y) * q.z);
+}
+float vnoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 w = f * f * (3.0 - 2.0 * f);
+  float a = hash12(i);
+  float b = hash12(i + vec2(1.0, 0.0));
+  float c = hash12(i + vec2(0.0, 1.0));
+  float d = hash12(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, w.x), mix(c, d, w.x), w.y);
+}
+float fbm(vec2 p) {
+  float v = 0.0;
+  float a = 0.5;
+  for (int k = 0; k < 4; k++) {
+    v += a * vnoise(p);
+    p = p * 2.03 + vec2(17.3, 9.1);
+    a *= 0.5;
+  }
+  return v;
+}
+vec3 hash33(vec3 p) {
+  p = fract(p * vec3(0.1031, 0.1030, 0.0973));
+  p += dot(p, p.yxz + 33.33);
+  return fract((p.xxy + p.yxx) * p.zyx);
+}
+float hash13(vec3 p) {
+  p = fract(p * 0.1031);
+  p += dot(p, p.zyx + 31.32);
+  return fract((p.x + p.y) * p.z);
+}
+vec3 starLayer(vec3 d, float s, float thresh, float bright) {
+  vec3 p = d * s;
+  vec3 id = floor(p);
+  float h = hash13(id);
+  if (h < thresh) return vec3(0.0);
+  vec3 f = fract(p) - 0.5;
+  vec3 off = (hash33(id) - 0.5) * 0.72;
+  float dist = length(f - off);
+  float m = 1.0 - smoothstep(0.0, 0.14, dist);
+  m = m * m;
+  float t = fract(h * 13.7);
+  vec3 tint = mix(vec3(0.65, 0.78, 1.0), vec3(1.0, 0.82, 0.66), t);
+  return tint * (m * bright * (0.35 + 1.3 * fract(h * 7.3)));
+}
+vec3 skyColor(vec3 d) {
+  vec3 col = vec3(0.010, 0.012, 0.020);
+  vec3 bn = normalize(vec3(0.42, 0.26, 0.87));
+  float bd = dot(d, bn);
+  float band = exp(-bd * bd * 7.0);
+  vec2 muv = d.xz * (2.2 / (0.35 + abs(d.y)));
+  float n1 = fbm(muv + vec2(3.1, 7.7));
+  float n2 = fbm(muv * 1.8 + vec2(9.2, 1.4));
+  vec3 neb = mix(vec3(0.10, 0.06, 0.045), vec3(0.09, 0.12, 0.22), n2);
+  col += neb * band * (0.20 + 0.80 * n1);
+  col += starLayer(d, 48.0, 0.90, 1.0);
+  col += starLayer(d, 105.0, 0.93, 0.55);
+  return col;
+}
+void diskHit(vec3 hp, vec3 vdir, out vec3 emis, out float alpha) {
+  float r = max(length(hp.xz), 2.9);
+  float phi = atan(hp.z, hp.x);
+  float w = u_time * 2.0 * pow(3.0 / r, 1.5);
+  float b = phi - w + 2.6 * log(max(r / 3.0, 0.05));
+  vec2 circ = vec2(cos(b), sin(b));
+  float n = fbm(circ * 1.6 + vec2(r * 1.4, -r * 0.9));
+  float fil = vnoise(circ * 4.2 + vec2(r * 5.0 - u_time * 0.35, r * 2.6 + 1.7));
+  float dens = clamp(0.30 + 0.85 * n, 0.0, 1.5) * (0.70 + 0.55 * fil);
+  float edge = smoothstep(DISK_IN, DISK_IN + 0.55, r) * (1.0 - smoothstep(8.0, DISK_OUT, r));
+  float beta = min(0.52 * sqrt(3.0 / r), 0.65);
+  vec3 tang = normalize(vec3(-hp.z, 0.0, hp.x));
+  vec3 vn = normalize(vdir);
+  float mu = dot(vn, tang);
+  float gam = inversesqrt(max(1.0 - beta * beta, 0.05));
+  float dop = 1.0 / (gam * (1.0 + beta * mu));
+  float grav = sqrt(max(1.0 - 1.0 / r, 0.03));
+  float shift = dop * grav;
+  float boost = shift * shift * shift;
+  float temp = clamp(pow(3.0 / r, 0.8) * pow(shift, 0.6) * 1.25, 0.0, 2.0);
+  vec3 tint = mix(vec3(1.0, 0.42, 0.13), vec3(1.0, 0.83, 0.60), smoothstep(0.05, 0.75, temp));
+  tint = mix(tint, vec3(0.78, 0.87, 1.0), smoothstep(0.75, 1.6, temp));
+  float prof = pow(3.0 / r, 1.6);
+  emis = tint * dens * prof * boost * u_gain;
+  alpha = clamp(dens * 1.1, 0.0, 1.0) * edge;
+}
+void main() {
+  vec2 uv = (gl_FragCoord.xy - 0.5 * u_res) / u_res.y;
+  float cp = cos(u_pitch);
+  float cy = cos(u_yaw);
+  float sy = sin(u_yaw);
+  vec3 ro = u_dist * vec3(cp * sy, sin(u_pitch), cp * cy);
+  vec3 fw = -ro / u_dist;
+  vec3 rt = normalize(cross(fw, vec3(0.0, 1.0, 0.0)));
+  vec3 up = cross(rt, fw);
+  vec3 rd = normalize(fw * 1.8 + rt * uv.x + up * uv.y);
+  vec3 p = ro;
+  vec3 v = rd;
+  vec3 cv = cross(p, v);
+  float h2 = dot(cv, cv);
+  vec3 col = vec3(0.0);
+  float trans = 1.0;
+  float jit = 0.9 + 0.2 * hash12(gl_FragCoord.xy);
+  bool escaped = false;
+  vec3 pp = p;
+  for (int i = 0; i < MAXSTEPS; i++) {
+    if (float(i) >= u_steps) break;
+    float r2 = dot(p, p);
+    if (r2 < 1.0) break;
+    float r = sqrt(r2);
+    float dt = u_stepSize * jit * clamp(0.10 + 0.30 * (r - 1.0), 0.06, 1.4);
+    float r5 = r2 * r2 * r;
+    v += ((-1.5 * h2 / r5) * p) * dt;
+    pp = p;
+    p += v * dt;
+    if (pp.y * p.y < 0.0) {
+      float f = pp.y / (pp.y - p.y);
+      vec3 hp = mix(pp, p, f);
+      float rr = length(hp.xz);
+      if (rr > 2.95 && rr < DISK_OUT) {
+        vec3 e;
+        float al;
+        diskHit(hp, v, e, al);
+        col += trans * al * e;
+        trans *= (1.0 - al);
+        if (trans < 0.03) break;
+      }
+    }
+    if (r2 > ESC2 && dot(p, v) > 0.0) { escaped = true; break; }
+  }
+  if (escaped) {
+    col += trans * skyColor(normalize(v));
+  }
+  col *= u_exposure;
+  col = col / (1.0 + col);
+  vec2 q = gl_FragCoord.xy / u_res - 0.5;
+  q.x *= u_res.x / u_res.y;
+  float vig = 1.0 - 0.38 * smoothstep(0.35, 1.05, length(q));
+  col *= vig;
+  col = pow(max(col, vec3(0.0)), vec3(0.4545));
+  col += (hash12(gl_FragCoord.xy + 7.3) - 0.5) * (1.2 / 255.0);
+  gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+function makeShader(type, src) {
+  var s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    throw new Error(gl.getShaderInfoLog(s));
+  }
+  return s;
+}
+
+var prog;
+try {
+  prog = gl.createProgram();
+  gl.attachShader(prog, makeShader(gl.VERTEX_SHADER, VS));
+  gl.attachShader(prog, makeShader(gl.FRAGMENT_SHADER, FS));
+  gl.bindAttribLocation(prog, 0, 'a_pos');
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+} catch (err) {
+  nogl.hidden = false;
+  nogl.firstChild.textContent = 'Shader error: ' + err.message;
+  return;
+}
+gl.useProgram(prog);
+
+var buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+var U = {};
+var names = ['u_res', 'u_time', 'u_yaw', 'u_pitch', 'u_dist', 'u_steps', 'u_stepSize', 'u_gain', 'u_exposure'];
+for (var ni = 0; ni < names.length; ni++) U[names[ni]] = gl.getUniformLocation(prog, names[ni]);
+
+function clamp(x, a, b) { return x < a ? a : (x > b ? b : x); }
+
+var S = {
+  yaw: 0.7, pitch: 0.13, dist: 14,
+  yawT: 0.7, pitchT: 0.13, distT: 14,
+  time: 0, paused: false, drift: true,
+  lastTouch: -10, pinch: 0,
+  steps: 260, step: 1.0, scale: 0.8,
+  gain: 1.35, exposure: 1.15,
+  quality: 'med', ema: 16, n: 0
+};
+
+var PRESETS = {
+  low: { steps: 150, step: 1.25, scale: 0.6 },
+  med: { steps: 260, step: 1.0, scale: 0.8 },
+  high: { steps: 360, step: 0.85, scale: 1.0 },
+  auto: { steps: 260, step: 1.0, scale: 0.8 }
+};
+
+function resize() {
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var w = Math.max(2, Math.round(window.innerWidth * S.scale * dpr));
+  var h = Math.max(2, Math.round(window.innerHeight * S.scale * dpr));
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  gl.viewport(0, 0, w, h);
+}
+
+function applyQuality(q) {
+  S.quality = q;
+  var p = PRESETS[q];
+  S.steps = p.steps;
+  S.step = p.step;
+  S.scale = p.scale;
+  S.ema = 16;
+  resize();
+  var btns = document.querySelectorAll('#qrow button');
+  for (var i = 0; i < btns.length; i++) {
+    if (btns[i].getAttribute('data-q') === q) btns[i].classList.add('on');
+    else btns[i].classList.remove('on');
+  }
+}
+
+var pointers = {};
+canvas.addEventListener('pointerdown', function (e) {
+  try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+  pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+  S.lastTouch = performance.now() / 1000;
+  canvas.style.cursor = 'grabbing';
+});
+canvas.addEventListener('pointermove', function (e) {
+  var p = pointers[e.pointerId];
+  if (!p) return;
+  var dx = e.clientX - p.x;
+  var dy = e.clientY - p.y;
+  p.x = e.clientX;
+  p.y = e.clientY;
+  S.lastTouch = performance.now() / 1000;
+  var ids = Object.keys(pointers);
+  if (ids.length === 1) {
+    S.yawT -= dx * 0.005;
+    S.pitchT = clamp(S.pitchT + dy * 0.004, -1.25, 1.25);
+  } else if (ids.length === 2) {
+    var a = pointers[ids[0]];
+    var b = pointers[ids[1]];
+    var d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (S.pinch > 0 && d > 0) S.distT = clamp(S.distT * (S.pinch / d), 4, 42);
+    S.pinch = d;
+  }
+});
+function endPointer(e) {
+  delete pointers[e.pointerId];
+  if (Object.keys(pointers).length === 0) { S.pinch = 0; canvas.style.cursor = 'grab'; }
+}
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', endPointer);
+canvas.addEventListener('wheel', function (e) {
+  e.preventDefault();
+  S.distT = clamp(S.distT * Math.exp(e.deltaY * 0.0011), 4, 42);
+  S.lastTouch = performance.now() / 1000;
+}, { passive: false });
+canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+document.getElementById('qrow').addEventListener('click', function (e) {
+  var q = e.target && e.target.getAttribute ? e.target.getAttribute('data-q') : null;
+  if (q && PRESETS[q]) applyQuality(q);
+});
+var expEl = document.getElementById('exposure');
+var expV = document.getElementById('exposureV');
+expEl.addEventListener('input', function () {
+  S.exposure = parseFloat(expEl.value);
+  expV.textContent = S.exposure.toFixed(2);
+});
+var diskEl = document.getElementById('disk');
+var diskV = document.getElementById('diskV');
+diskEl.addEventListener('input', function () {
+  S.gain = parseFloat(diskEl.value);
+  diskV.textContent = S.gain.toFixed(2);
+});
+var pauseBtn = document.getElementById('pause');
+function setPaused(v) {
+  S.paused = v;
+  pauseBtn.textContent = v ? 'Resume' : 'Pause';
+  if (v) pauseBtn.classList.add('on'); else pauseBtn.classList.remove('on');
+}
+pauseBtn.addEventListener('click', function () { setPaused(!S.paused); });
+var orbitBtn = document.getElementById('orbit');
+orbitBtn.addEventListener('click', function () {
+  S.drift = !S.drift;
+  if (S.drift) orbitBtn.classList.add('on'); else orbitBtn.classList.remove('on');
+});
+document.getElementById('reset').addEventListener('click', function () {
+  S.yawT = 0.7; S.pitchT = 0.13; S.distT = 14;
+});
+window.addEventListener('keydown', function (e) {
+  if (e.code === 'Space') { e.preventDefault(); setPaused(!S.paused); }
+  else if (e.code === 'KeyR') { S.yawT = 0.7; S.pitchT = 0.13; S.distT = 14; }
+  else if (e.code === 'KeyH') { document.body.classList.toggle('hide-ui'); }
+});
+window.addEventListener('resize', resize);
+
+applyQuality('med');
+
+var last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  var dtms = now - last;
+  last = now;
+  var dt = clamp(dtms / 1000, 0.0005, 0.1);
+  if (!S.paused) S.time += dt * 0.6;
+  if (S.drift && now / 1000 - S.lastTouch > 5) S.yawT += dt * 0.05;
+  S.yaw += (S.yawT - S.yaw) * (1 - Math.exp(-dt * 7));
+  S.pitch += (S.pitchT - S.pitch) * (1 - Math.exp(-dt * 7));
+  S.dist += (S.distT - S.dist) * (1 - Math.exp(-dt * 5));
+  gl.uniform2f(U.u_res, canvas.width, canvas.height);
+  gl.uniform1f(U.u_time, S.time);
+  gl.uniform1f(U.u_yaw, S.yaw);
+  gl.uniform1f(U.u_pitch, S.pitch);
+  gl.uniform1f(U.u_dist, S.dist);
+  gl.uniform1f(U.u_steps, S.steps);
+  gl.uniform1f(U.u_stepSize, S.step);
+  gl.uniform1f(U.u_gain, S.gain);
+  gl.uniform1f(U.u_exposure, S.exposure);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  S.ema = S.ema * 0.95 + dtms * 0.05;
+  S.n++;
+  if (S.quality === 'auto' && S.n % 90 === 0) {
+    if (S.ema > 26 && S.scale > 0.5) { S.scale = Math.max(0.5, S.scale - 0.15); resize(); }
+    else if (S.ema < 14 && S.scale < 1) { S.scale = Math.min(1, S.scale + 0.1); resize(); }
+  }
+  if (S.n % 20 === 0) {
+    statsEl.textContent = Math.round(1000 / Math.max(S.ema, 0.01)) + ' fps · ' + (canvas.width * canvas.height / 1000000).toFixed(2) + ' MP';
+  }
+}
+requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>
